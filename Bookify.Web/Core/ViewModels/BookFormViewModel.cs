@@ -22,7 +22,7 @@ namespace Bookify.Web.Core.ViewModels
 
 
         public IFormFile? Image { get; set; }
-
+        public string? ImageURL { get; set; }
 
 
         [MaxLength(50, ErrorMessage = Errors.MaxLength)]

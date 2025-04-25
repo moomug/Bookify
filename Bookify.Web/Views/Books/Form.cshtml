@@ -28,6 +28,10 @@
 <div class="card shadow-sm">
     <div class="card-body">
         <form method="post" asp-controller="Books" enctype="multipart/form-data">
+            @if (Model.Id >0)
+            {
+                <input type="hidden" asp-for="Id" />
+            }
             <div class="row">
                 <div class="col-md-4">
                     <div class="mb-5 ">
@@ -91,7 +95,12 @@
                 <div class="col-md-4">
                     <div class="mb-5 ">
                         <div class="form-floating mb-2">
-                            <input type="file" class="form-control" placeholder="Image" asp-for="Image" />
+                            <div>
+                              
+                                <img id="ImagePreview" src="~/images/books/@(Model.ImageURL is null ? "Elmaghrabi.png" : Model.ImageURL)" alt="Book Image" class="img-thumbnail" />
+                            </div>
+                            <input type="file" class="form-control" placeholder="Image" asp-for="Image" accept=".Jpg , .Png , .Jpeg" 
+                            onchange="document.getElementById('ImagePreview').src = window.URL.createObjectURL(this.files[0])"/>
                             <label asp-for="Image"></label>
                         </div>
                         <span asp-validation-for="Image " class="text-danger d-block"></span>

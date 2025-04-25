@@ -5,15 +5,17 @@ namespace Bookify.Web.Controllers
 
     public class BooksController : Controller
     {
+        private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly ApplicationDbContext _context;
         private readonly IMapper _mapper;
 
-
-
-        public BooksController(ApplicationDbContext context, IMapper mapper)
+        private List<string> _allowedExtensions = new() { ".jpg", ".png", ".jpeg" };
+        private int _maxAllowedSize = 2097152; // 2 MB
+        public BooksController(ApplicationDbContext context, IMapper mapper, IWebHostEnvironment webHostEnvironment)
         {
             _context = context;
             _mapper = mapper;
+            _webHostEnvironment = webHostEnvironment;
         }
 
         public IActionResult Index()
@@ -36,15 +38,52 @@ namespace Bookify.Web.Controllers
                 return View("Form", PopulateViewModel(model));
             var book = _mapper.Map<Book>(model);
 
+            if (model.Image is not null)
+            {
+                var extension = Path.GetExtension(model.Image.FileName);
+                if (!_allowedExtensions.Contains(extension))
+                {
+                    ModelState.AddModelError(nameof(model.Image), Errors.NotallowedExtension);
+                    return View("Form", PopulateViewModel(model));
+                }
+                if (model.Image.Length > _maxAllowedSize)
+                {
+                    ModelState.AddModelError(nameof(model.Image), Errors.MaxSize);
+                    return View("Form", PopulateViewModel(model));
+                }
+                var imageName = $"{Guid.NewGuid()}{extension}";
+
+                var path = Path.Combine($"{_webHostEnvironment.WebRootPath}/images/books",  imageName);
+
+                using var stream =System.IO.File.Create(path);
+                model.Image.CopyTo(stream);
+                book.ImageUrl = imageName;
+            }
+
             foreach (var category in model.SelectedCategories)
             {
                 book.Categories.Add(new BookCategory { CategoryId = category });
             }
+
             _context.Books.Add(book);
             _context.SaveChanges();
 
             return RedirectToAction(nameof(Index));
 
+        }
+
+        public IActionResult Edit(int id)
+        {
+            var book = _context.Books.Include(b => b.Categories).SingleOrDefault(b=>b.Id == id);
+            if(book is null)
+                return NotFound();
+
+            var model = _mapper.Map<BookFormViewModel>(book);
+            var viewModel = PopulateViewModel(model);
+
+            viewModel.SelectedCategories = book.Categories.Select(c => c.CategoryId).ToList();
+
+            return View("Form", PopulateViewModel(viewModel));
         }
 
         private BookFormViewModel PopulateViewModel(BookFormViewModel? model = null)
