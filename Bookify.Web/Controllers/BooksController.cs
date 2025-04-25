@@ -86,6 +86,65 @@ namespace Bookify.Web.Controllers
             return View("Form", PopulateViewModel(viewModel));
         }
 
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult Edit(BookFormViewModel model)
+        {
+
+            if (!ModelState.IsValid)
+                return View("Form", PopulateViewModel(model));
+            var book = _context.Books.Include(b => b.Categories).SingleOrDefault(b => b.Id == model.Id );
+            
+            if (book is null)
+                return NotFound();
+
+            if (model.Image is not null)
+            {
+                if(!string.IsNullOrEmpty(book.ImageUrl))
+                {
+                    var oldImagePath = Path.Combine($"{_webHostEnvironment.WebRootPath}/images/books", book.ImageUrl);
+                    if (System.IO.File.Exists(oldImagePath))
+                    {
+                        System.IO.File.Delete(oldImagePath);
+                    }
+                }
+                var extension = Path.GetExtension(model.Image.FileName);
+                if (!_allowedExtensions.Contains(extension))
+                {
+                    ModelState.AddModelError(nameof(model.Image), Errors.NotallowedExtension);
+                    return View("Form", PopulateViewModel(model));
+                }
+                if (model.Image.Length > _maxAllowedSize)
+                {
+                    ModelState.AddModelError(nameof(model.Image), Errors.MaxSize);
+                    return View("Form", PopulateViewModel(model));
+                }
+                var imageName = $"{Guid.NewGuid()}{extension}";
+
+                var path = Path.Combine($"{_webHostEnvironment.WebRootPath}/images/books", imageName);
+
+                using var stream = System.IO.File.Create(path);
+                model.Image.CopyTo(stream);
+                model.ImageURL = imageName;
+            }
+            else if (model.ImageURL is null && !string.IsNullOrEmpty(book.ImageUrl))
+            {
+                model.ImageURL = book.ImageUrl;
+            }
+
+            book = _mapper.Map(model, book);
+            book.LastUpdatedOn = DateTime.Now;
+            foreach (var category in model.SelectedCategories)
+            {
+                book.Categories.Add(new BookCategory { CategoryId = category });
+            }
+
+            _context.SaveChanges();
+
+            return RedirectToAction(nameof(Index));
+
+        }
         private BookFormViewModel PopulateViewModel(BookFormViewModel? model = null)
         {
 
