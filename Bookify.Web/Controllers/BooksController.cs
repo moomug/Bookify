@@ -113,7 +113,7 @@ namespace Bookify.Web.Controllers
                 if (!_allowedExtensions.Contains(extension))
                 {
                     ModelState.AddModelError(nameof(model.Image), Errors.NotallowedExtension);
-                    return View("Form", PopulateViewModel(model));
+                    return  View("Form", PopulateViewModel(model));
                 }
                 if (model.Image.Length > _maxAllowedSize)
                 {
